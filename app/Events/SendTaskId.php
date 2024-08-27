@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Events;
+
+use App\Models\Nava;
+use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PresenceChannel;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class SendTaskId
+{
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+
+    /**
+     * Create a new event instance.
+     */
+    public function __construct(public Nava $nava , public string $taskId , public string $token)
+    {
+        //
+    }
+
+    /**
+     * Get the channels the event should broadcast on.
+     *
+     * @return array<int, \Illuminate\Broadcasting\Channel>
+     */
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('channel-name'),
+        ];
+    }
+
+    /**
+     * Get create a new event instance.
+     */ 
+    public function getTaskId()
+    {
+        return $this->taskId;
+    }
+
+    /**
+     * Get create a new event instance.
+     */ 
+    public function getToken()
+    {
+        return $this->token;
+    }
+
+    /**
+     * Get create a new event instance.
+     */ 
+    public function getNava()
+    {
+        return $this->nava;
+    }
+}

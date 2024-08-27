@@ -1,0 +1,62 @@
+stages:
+  - Build
+  - Deploy
+
+docker-build-staging:
+  stage: Build
+  only:
+    - staging
+  image: registry.toopmarket.com/public/docker:24-dind
+  before_script:
+    - docker login $REGISTRY_URL -u $REGISTRY_USER -p $REGISTRY_PASS
+  script:
+    - docker pull ${registry_project_url}:staging || true
+    - docker build  --cache-from ${registry_project_url}:staging --tag ${registry_project_url}:staging --tag ${registry_project_url}:$CI_COMMIT_SHA .
+    - docker push ${registry_project_url}:staging
+    - docker push ${registry_project_url}:$CI_COMMIT_SHA
+
+deploy-staging:
+  stage: Deploy
+  only:
+    - staging
+  image: registry.toopmarket.com/public/alpine-ssh
+  before_script:
+    - chmod og= $SSH_DEVELOP_SERVER_PRIVATE_KEY
+  script:
+    - >
+      ssh -i $SSH_DEVELOP_SERVER_PRIVATE_KEY -o StrictHostKeyChecking=no $DEVELOP_SERVER_USER@$DEVELOP_SERVER_IP \
+      "docker pull ${registry_project_url}:staging &&
+      docker compose -f /home/nava/docker-compose.yml up -d"
+    - >
+      ssh -i $SSH_DEVELOP_SERVER_PRIVATE_KEY -o StrictHostKeyChecking=no $DEVELOP_SERVER_USER@$DEVELOP_SERVER_IP \  
+      "docker rmi $(docker images -f "dangling=true" -q) || true"
+
+build-production:
+  stage: Build
+  only: 
+    - master
+  image: registry.toopmarket.com/public/docker:24-dind
+  before_script:
+    - docker login $REGISTRY_URL -u $REGISTRY_USER -p $REGISTRY_PASS
+  script:
+    - docker pull ${registry_project_url}:latest || true
+    - docker build --cache-from ${registry_project_url}:latest --tag ${registry_project_url}:latest --tag ${registry_project_url}:$CI_COMMIT_SHA .
+    - docker push ${registry_project_url}:latest
+    - docker push ${registry_project_url}:$CI_COMMIT_SHA
+    
+deploy-production:
+  stage: Deploy
+  only:
+    - master
+  image: registry.toopmarket.com/public/alpine-ssh
+  before_script:
+    - chmod og= $SSH_PRODUCTION_SERVER_PRIVATE_KEY
+  script:
+    - >
+      ssh -i $SSH_PRODUCTION_SERVER_PRIVATE_KEY -o StrictHostKeyChecking=no $PRODUCTION_SERVER_USER@$STACK_SERVER_IP \
+      "docker pull ${registry_project_url}:latest &&
+      docker stack deploy -c /home/nava/docker-compose.yml nava --with-registry-auth"
+    - >
+      ssh -i $SSH_PRODUCTION_SERVER_PRIVATE_KEY -o StrictHostKeyChecking=no $PRODUCTION_SERVER_USER@$STACK_SERVER_IP \  
+      "docker rmi $(docker images -f "dangling=true" -q) || true"
+
